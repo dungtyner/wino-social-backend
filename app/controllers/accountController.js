@@ -20,17 +20,15 @@ class AccountController {
       .then((google_response) => {
         if (google_response.success == true) {
           Account.findOne(req.body).then((account) => {
-            // console.log(account);
             if (account == null) {
               res.send({ mess: 'Sign In Fail!!!' });
             } else {
               req.session.loginEd = account._id;
-              console.log(req.session.loginEd);
               res.send({ status: 'ok' });
             }
           });
         } else {
-          return res.send({ response: 'Failed' });
+          return res.send({ response: 'Recaptcha invalid' });
         }
       })
       .catch((error) => {
@@ -40,8 +38,6 @@ class AccountController {
   }
   CheckIsActived(req, res) {
     console.log(req.session.loginEd);
-
-
     if (req.session.loginEd) {
       Account.findOne({ _id: req.session.loginEd }).then(async (account) => {
         chatController.load_roomSocket_Chat(account);
