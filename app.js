@@ -25,11 +25,12 @@ const route = require('./routes/index');
 
 app.use(
   cors({
-    origin: ['http://localhost:3000'],
+    origin: [process.env.CLIENT_UI_HOST],
     methods: ['GET', 'POST'],
     credentials: true,
   }),
 );
+
 app.use(
   express.urlencoded({
     extended: false,
@@ -40,17 +41,16 @@ app.use(body_pa.urlencoded({ extended: true }));
 app.set('trust proxy', 1);
 app.use(
   session({
-    secret: 'SocialWeb',
+    secret: process.env.ACCESS_TOKEN_CODE,
     saveUninitialized: false,
     proxy: true,
-    // FOR SERVER HOST: https://testsocialmusic.herokuapp.com
-    cookie: { httpOnly: true, secure: true, maxAge: 1000 * 60 * 60 * 48, sameSite: 'none' },
-    // FOR SERVER LOCAL HOST
-    // cookie: {
-    //   secure: false,
-    // },
-    // resave: true,
-    store:store
+    cookie: {
+      httpOnly: true,
+      secure: true,
+      maxAge: 1000 * 60 * 60 * 48,
+      sameSite: 'none',
+    },
+    store: store,
   }),
 );
 route(app);
