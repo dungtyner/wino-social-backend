@@ -10,6 +10,6 @@ function route(app) {
   // app.use('/notification', notificationRoute);
   // app.use('/friend', friendRoute);
   // app.use('/friends', friendRoute);
-  app.use('/healthy', healthyRoute)
+  app.use('/healthy', healthyRoute);
 }
 module.exports = route;
