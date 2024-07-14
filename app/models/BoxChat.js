@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { getDataAccount_byID } = require('./Account');
+const { findOneById } = require('../repositories/AccountRepository');
 const BoxChat = mongoose.Schema(
   {
     content_messages: { type: Array },
@@ -30,7 +30,7 @@ function Chat({
 async function getCountNotificationChat({ id_account }) {
   console.log('getCountNotificationChat() running');
   var count = [];
-  var dataAccount = await getDataAccount_byID(id_account);
+  var dataAccount = await findOneById(id_account);
   var tmp_count = await Promise.all(
     dataAccount.list_id_box_chat.map(async (element, idx) => {
       var box_chats = await mongoose

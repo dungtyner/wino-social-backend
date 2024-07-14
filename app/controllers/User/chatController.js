@@ -1,10 +1,10 @@
+const Account = require('../../models/Account');
+const { BoxChat } = require('../../models/BoxChat');
+const { Chat } = require('../../models/BoxChat');
 const {
-  Account,
-  getDataAccount_bySlug,
-  getDataAccount_byID,
-} = require('../models/Account');
-const { BoxChat } = require('../models/BoxChat');
-const { Chat } = require('../models/BoxChat');
+  findOneById,
+  findOneBySlug,
+} = require('../../repositories/AccountRepository');
 const DriveController = require('./driveController');
 
 const mongoose = require('mongoose');
@@ -14,7 +14,7 @@ class chatController {
     var listBoxChat = [];
     var slug_personal;
 
-    var result = await getDataAccount_byID(req.session.loginEd);
+    var result = await findOneById(req.session.loginEd);
     if (result) {
       slug_personal = result.slug_personal;
       listBoxChat = Promise.all(
@@ -90,7 +90,7 @@ class chatController {
   async request_getDetailChat(req, res) {
     console.log('request_getDetailChat() running');
     // load last message seen
-    var dataAccount = await getDataAccount_byID(req.session.loginEd);
+    var dataAccount = await findOneById(req.session.loginEd);
     if (!JSON.parse(req.query.isSeen)) {
       console.log(req.session.loginEd);
       var box_chat = await BoxChat.findOne({ _id: JSON.parse(req.query._id) });
@@ -164,9 +164,7 @@ class chatController {
       });
     });
 
-    var account = await getDataAccount_bySlug(
-      value_content_sessionMessage.slug_sender,
-    );
+    var account = await findOneBySlug(value_content_sessionMessage.slug_sender);
     var nsp_chat = global.io.of('/chat');
     await nsp_chat.to(`CHAT_${idChat}`).emit(`PEOPLE_${idChat}_SENDING`, {
       account,
@@ -288,16 +286,14 @@ class chatController {
     var data = await BoxChat.findOne({ _id });
     data.content_messages = await Promise.all(
       data.content_messages.map(async (content_message) => {
-        var account_sender = await getDataAccount_bySlug(
-          content_message.slug_sender,
-        );
+        var account_sender = await findOneBySlug(content_message.slug_sender);
         content_message.avatar_account = account_sender.avatar_account;
         data.members.forEach((member) => {
           if (member.slug_member == content_message.slug_sender) {
             if (member.nick_name) {
               content_message.name_sender = member.nick_name;
             } else {
-              content_message.name_sender = `${account_sender.user_fname} ${account_sender.user_lname}`;
+              content_message.name_sender = `${account_sender.fname} ${account_sender.lname}`;
             }
           }
         });
@@ -340,7 +336,7 @@ class chatController {
     console.log(global.io.of('/chat').adapter.rooms);
   }
   async request_clearNotificationChat(req, res) {
-    var dataAccount = await getDataAccount_byID(req.session.loginEd);
+    var dataAccount = await findOneById(req.session.loginEd);
     //  console.log(dataAccount);
     var list_id_box_chat = JSON.parse(req.query.listNotification);
     list_id_box_chat.forEach(async (box_chat) => {
@@ -512,7 +508,7 @@ class chatController {
     tmp_session_mess.isShare = true;
     tmp_session_mess.interact = [];
     tmp_session_mess.reply = null;
-    var account = await getDataAccount_byID(req.session.loginEd);
+    var account = await findOneById(req.session.loginEd);
     console.log({
       session_messages: [tmp_session_mess],
       slug_sender: account.slug_personal,
@@ -537,7 +533,7 @@ class chatController {
     var your_slug = [];
     tmpBoxChat.last_interact = box_chat.last_interact;
 
-    var dataAccount = await getDataAccount_byID(idAccount);
+    var dataAccount = await findOneById(idAccount);
     box_chat.members.forEach((member) => {
       if (member.slug_member == dataAccount.slug_personal) {
         var idx_Content_message = member.last_seen_content_message
@@ -563,11 +559,11 @@ class chatController {
       } else {
         tmpBoxChat.lastSessionMessage = [];
       }
-      var dataAccountSender = await getDataAccount_bySlug(
+      var dataAccountSender = await findOneBySlug(
         box_chat.content_messages[box_chat.content_messages.length - 1]
           .slug_sender,
       );
-      tmpBoxChat.name_sender = dataAccountSender.user_lname;
+      tmpBoxChat.name_sender = dataAccountSender.lname;
 
       tmpBoxChat.slug_sender =
         box_chat.content_messages[
@@ -584,17 +580,15 @@ class chatController {
         slug_personal: your_slug[0].slug_member,
       }).select({
         avatar_account: 1,
-        user_fname: 1,
-        user_lname: 1,
+        fname: 1,
+        lname: 1,
       });
 
       tmpBoxChat.avatarChat = dataMember.avatar_account;
       if (your_slug[0].nick_name) {
         tmpBoxChat.nameChat = your_slug[0].nick_name;
       } else {
-        tmpBoxChat.nameChat = await (dataMember.user_fname +
-          ' ' +
-          dataMember.user_lname);
+        tmpBoxChat.nameChat = await (dataMember.fname + ' ' + dataMember.lname);
       }
     } else {
       tmpBoxChat.nameChat = box_chat.name_chat;
@@ -609,7 +603,7 @@ class chatController {
     var members = dataChat.members;
     var list_member = await Promise.all(
       members.map(async (member) => {
-        var tmp_member = await getDataAccount_bySlug(member.slug_member);
+        var tmp_member = await findOneBySlug(member.slug_member);
         member.detail = tmp_member;
         return member;
       }),
@@ -619,7 +613,7 @@ class chatController {
   async request_removeChat(req, res) {
     console.log('request_removeChat() running');
     var box_chat = await BoxChat.findOne({ _id: req.body.idChat });
-    var data_account = await getDataAccount_byID(req.session.loginEd);
+    var data_account = await findOneById(req.session.loginEd);
 
     box_chat.members.forEach((member, idx) => {
       if (member.slug_member == data_account.slug_personal) {
@@ -647,7 +641,7 @@ class chatController {
   }
   async request_search(req, res) {
     console.log('request_search() running ');
-    var data_account = await getDataAccount_byID(req.session.loginEd);
+    var data_account = await findOneById(req.session.loginEd);
 
     var data_box_chats = await Promise.all(
       data_account.list_id_box_chat.map(async (id_box_chat) => {

@@ -1,9 +1,7 @@
 const express = require('express');
-const accountControllers = require('../app/controllers/accountController');
+const accountControllers = require('../app/controllers/User/accountController');
 const router = express.Router();
 
-router.post('/signin', accountControllers.SignIn);
-router.post('/signup', accountControllers.SignUp);
 router.post('/restore-pass', accountControllers.RestorePassword);
 router.post('/CheckCodeEmail', accountControllers.CheckCodeEmail);
 router.get('/check-is-active', accountControllers.CheckIsActived);

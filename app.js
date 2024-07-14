@@ -10,12 +10,16 @@ const configureSession = require('./config/session');
 const configureCors = require('./config/cors');
 const configureExpress = require('./config/express');
 const configureSocket = require('./config/socket');
+const exceptionHandler = require('./app/middlewares/exceptionHandler');
+const successHandler = require('./app/middlewares/successHandler');
 
 connectDB();
 configureCors(app);
 configureExpress(app);
 configureSession(app);
+app.use(successHandler);
 route(app);
+app.use(exceptionHandler);
 const io = configureSocket(server);
 
 module.exports = { io };

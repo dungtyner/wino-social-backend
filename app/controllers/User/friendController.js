@@ -1,7 +1,7 @@
 const {
-  getDataAccount_byID,
-  getDataAccount_bySlug,
-} = require('../models/Account');
+  findOneById,
+  findOneBySlug,
+} = require('../../repositories/AccountRepository');
 const AccountController = require('./accountController');
 
 class FriendController {
@@ -31,10 +31,10 @@ class FriendController {
   async getListFriend({ id }) {
     console.log('getListFriend() running');
     var listFriend = [];
-    var dataAccount = await getDataAccount_byID(id);
+    var dataAccount = await findOneById(id);
     listFriend = await Promise.all(
       dataAccount.list_slug_friend.map(async (slug_friend) => {
-        return await getDataAccount_bySlug(slug_friend);
+        return await findOneBySlug(slug_friend);
       }),
     );
     console.log(listFriend);
@@ -43,10 +43,10 @@ class FriendController {
   async getListRequestFriend({ id }) {
     console.log('getListRequestFriend() running');
     var listFriend = [];
-    var dataAccount = await getDataAccount_byID(id);
+    var dataAccount = await findOneById(id);
     listFriend = await Promise.all(
       dataAccount.list_request_new_friend.map(async (friend) => {
-        return await getDataAccount_bySlug(friend.slug_friend);
+        return await findOneBySlug(friend.slug_friend);
       }),
     );
     console.log(listFriend);
@@ -55,19 +55,19 @@ class FriendController {
   async getListResponseFriend({ id }) {
     console.log('getListResponseFriend() running');
     var listFriend = [];
-    var dataAccount = await getDataAccount_byID(id);
+    var dataAccount = await findOneById(id);
     listFriend = await Promise.all(
       dataAccount.list_response_new_friend.map(async (friend) => {
-        return await getDataAccount_bySlug(friend.slug_friend);
+        return await findOneBySlug(friend.slug_friend);
       }),
     );
     console.log(listFriend);
     return listFriend;
   }
   async requestAddFriend(req, res) {
-    var data_own_account = await getDataAccount_byID(req.session.loginEd);
+    var data_own_account = await findOneById(req.session.loginEd);
 
-    var data_friend_account = await getDataAccount_bySlug(req.body.slug_friend);
+    var data_friend_account = await findOneBySlug(req.body.slug_friend);
     data_own_account.list_request_new_friend.push(
       new Obj_requestAddFriend({
         slug_friend: data_friend_account.slug_personal,
@@ -118,9 +118,9 @@ class FriendController {
   async acceptAddNewFriend(req, res) {
     console.log('acceptAddNewFriend running');
     var slug_requester = req.body.data_res_new_friend;
-    var dataAccount_request = await getDataAccount_bySlug(slug_requester);
+    var dataAccount_request = await findOneBySlug(slug_requester);
 
-    var dataAccount_response = await getDataAccount_byID(req.session.loginEd);
+    var dataAccount_response = await findOneById(req.session.loginEd);
     dataAccount_response.list_response_new_friend.forEach((item, idx) => {
       if (item.slug_friend == dataAccount_request.slug_personal) {
         dataAccount_response.list_response_new_friend.splice(idx, 1);
@@ -178,10 +178,8 @@ class FriendController {
   }
   async unFriend(req, res) {
     console.log('unFriend() running');
-    var dataAccount_unfriend = await getDataAccount_bySlug(
-      req.body.slug_unfriend,
-    );
-    var dataAccount_own = await getDataAccount_byID(req.session.loginEd);
+    var dataAccount_unfriend = await findOneBySlug(req.body.slug_unfriend);
+    var dataAccount_own = await findOneById(req.session.loginEd);
     dataAccount_own.list_slug_friend.forEach((slug_friend, idx) => {
       if (slug_friend == dataAccount_unfriend.slug_personal) {
         dataAccount_own.list_slug_friend.splice(idx, 1);
@@ -220,9 +218,9 @@ class FriendController {
   }
   async remove_requestAddFriend(req, res) {
     var slug_friend = req.body.slug_friend;
-    var dataAccount_response = await getDataAccount_bySlug(slug_friend);
+    var dataAccount_response = await findOneBySlug(slug_friend);
 
-    var dataAccount_request = await getDataAccount_byID(req.session.loginEd);
+    var dataAccount_request = await findOneById(req.session.loginEd);
 
     dataAccount_response.list_response_new_friend.forEach((item, idx) => {
       if (item.slug_friend == dataAccount_request.slug_personal) {
@@ -270,9 +268,9 @@ class FriendController {
   }
   async refuse_requestAddFriend(req, res) {
     var slug_requester = req.body.slug_friend;
-    var dataAccount_request = await getDataAccount_bySlug(slug_requester);
+    var dataAccount_request = await findOneBySlug(slug_requester);
 
-    var dataAccount_response = await getDataAccount_byID(req.session.loginEd);
+    var dataAccount_response = await findOneById(req.session.loginEd);
 
     dataAccount_response.list_response_new_friend.forEach((item, idx) => {
       if (item.slug_friend == dataAccount_request.slug_personal) {

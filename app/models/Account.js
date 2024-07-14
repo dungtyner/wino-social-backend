@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 const Account = mongoose.Schema(
   {
-    user_fname: { type: String, required: true },
-    user_lname: { type: String, required: true },
-    gmail: { type: String, required: true, unique: true },
+    fname: { type: String, required: true },
+    lname: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
     gender: { type: Boolean, required: false, default: false },
     birthday: { type: Date, required: true },
     password: { type: String, required: true },
@@ -40,18 +40,4 @@ const Account = mongoose.Schema(
     versionKey: false, // You should be aware of the outcome after set to false
   },
 );
-async function getDataAccount_byID(_id) {
-  var data = await mongoose.model('Account', Account).findOne({ _id });
-  return data;
-}
-async function getDataAccount_bySlug(slug_personal) {
-  var data = await mongoose
-    .model('Account', Account)
-    .findOne({ slug_personal });
-  return data;
-}
-module.exports = {
-  Account: mongoose.model('Account', Account),
-  getDataAccount_byID,
-  getDataAccount_bySlug,
-};
+module.exports = mongoose.model('Account', Account);

@@ -1,135 +1,81 @@
 const chatController = require('./chatController');
-const {
-  Account,
-  getDataAccount_byID,
-  getDataAccount_bySlug,
-} = require('../models/Account');
-const { getCountNotificationChat } = require('../models/BoxChat');
-const BoxChat = require('../models/BoxChat');
+const BaseController = require('./baseController');
+const Account = require('../../models/Account');
+const { getCountNotificationChat } = require('../../models/BoxChat');
+const BoxChat = require('../../models/BoxChat');
 const { default: mongoose } = require('mongoose');
+const {
+  findOneById,
+  findOneBySlug,
+} = require('../../repositories/AccountRepository');
 require('dotenv').config();
 global.listSocketOnline = [];
-class AccountController {
-  SignIn(req, res) {
-    console.log('SignIn running...');
-    var token = req.body.token;
-    var key_secret = process.env.RECAPTCHA_SECRET_KEY;
-    const url_Captcha = `https://www.google.com/recaptcha/api/siteverify?secret=${key_secret}&response=${token}`;
-    fetch(url_Captcha, { method: 'POST' })
-      .then((response) => response.json())
-      .then((google_response) => {
-        if (google_response.success == true) {
-          Account.findOne(req.body).then((account) => {
-            if (account == null) {
-              res.send({ mess: 'Sign In Fail!!!' });
-            } else {
-              req.session.loginEd = account._id;
-              res.send({ status: 'ok' });
-            }
-          });
-        } else {
-          return res.send({ response: 'Recaptcha invalid' });
-        }
-      })
-      .catch((error) => {
-        // Some error while verify captcha
-        return res.json({ error });
-      });
-  }
-  CheckIsActived(req, res) {
-    console.log(req.session.loginEd);
-    if (req.session.loginEd) {
-      Account.findOne({ _id: req.session.loginEd }).then(async (account) => {
-        chatController.load_roomSocket_Chat(account);
-        account.count_notification_chat = await getCountNotificationChat({
-          id_account: req.session.loginEd,
-        });
-        console.log(account.count_notification_chat);
-        var result = {
-          status: 200,
-          account: account,
-        };
-        global.io.on('connect', (socket) => {
-          socket.account = account;
-          global.listSocketOnline.push(socket);
-          socket.once(`I_AM_ONLINE`, () => {
-            if (
-              global.listSocketOnline.some(
-                (el) => el.account.slug_personal == account.slug_personal,
-              )
-            ) {
-              if (
-                global.listSocketOnline.some(
-                  (el) =>
-                    el.account.slug_personal == socket.account.slug_personal,
-                )
-              ) {
-                console.log(`FRIEND_${account.slug_personal}_ONLINE`);
-                global.io.emit(
-                  `FRIEND_${account.slug_personal}_ONLINE`,
-                  account,
-                );
-              }
-            }
-            new AccountController().loadFriendOnline(account, socket);
-          });
 
-          socket.on('disconnect', () => {
-            global.listSocketOnline.forEach((el, idx) => {
-              if (el == socket) {
-                global.listSocketOnline.splice(idx, 1);
-                // console.log(global.listSocketOnline.length);
-              }
-            });
-            if (
-              !global.listSocketOnline.some(
-                (el) =>
-                  el.account.slug_personal == socket.account.slug_personal,
-              )
-            ) {
-              console.log(`FRIEND_${socket.account.slug_personal}_OFFLINE`);
-              global.io.emit(
-                `FRIEND_${socket.account.slug_personal}_OFFLINE`,
-                socket.account,
-              );
-            }
-          });
-        });
-        res.send(result);
-      });
-    } else {
-      res.send(false);
-    }
+class AccountController extends BaseController {
+  constructor(req, res) {
+    super(req, res); // Gọi constructor của lớp cha (BaseController)
   }
-  SignUp(req, res) {
-    console.log(req.body);
-    new Date().toISOString();
-    var slug_personal = (
-      req.body.user_fname +
-      '.' +
-      req.body.user_lname +
-      new Date().toJSON()
-    )
-      .replaceAll(' ', '')
-      .replaceAll(':', '')
-      .replaceAll('-', '')
-      .toLowerCase();
-    req.body.slug_personal = slug_personal;
-    Account.create(req.body)
-      .then(() => {
-        res.send({ status: 'ok' });
-      })
-      .catch((error) => {
-        console.log(error);
-        res.send({ status: 'ko' });
+
+  async CheckIsActived(req, res) {
+    const account = req.user;
+
+    chatController.load_roomSocket_Chat(account);
+    account.count_notification_chat = await getCountNotificationChat({
+      id_account: account._id,
+    });
+    var result = {
+      status: 200,
+      account: account,
+    };
+    global.io.on('connect', (socket) => {
+      socket.account = account;
+      global.listSocketOnline.push(socket);
+      socket.once(`I_AM_ONLINE`, () => {
+        if (
+          global.listSocketOnline.some(
+            (el) => el.account.slug_personal == account.slug_personal,
+          )
+        ) {
+          if (
+            global.listSocketOnline.some(
+              (el) => el.account.slug_personal == socket.account.slug_personal,
+            )
+          ) {
+            console.log(`FRIEND_${account.slug_personal}_ONLINE`);
+            global.io.emit(`FRIEND_${account.slug_personal}_ONLINE`, account);
+          }
+        }
+        new AccountController().loadFriendOnline(account, socket);
       });
+
+      socket.on('disconnect', () => {
+        global.listSocketOnline.forEach((el, idx) => {
+          if (el == socket) {
+            global.listSocketOnline.splice(idx, 1);
+            // console.log(global.listSocketOnline.length);
+          }
+        });
+        if (
+          !global.listSocketOnline.some(
+            (el) => el.account.slug_personal == socket.account.slug_personal,
+          )
+        ) {
+          console.log(`FRIEND_${socket.account.slug_personal}_OFFLINE`);
+          global.io.emit(
+            `FRIEND_${socket.account.slug_personal}_OFFLINE`,
+            socket.account,
+          );
+        }
+      });
+    });
+    res.send(result);
   }
   CheckCodeEmail() {
     console.log(AccountController.User);
     if (AccountController.User) {
       if (AccountController.User.code == AccountController.User.code) {
         Account.updateOne(
-          { gmail: AccountController.User.gmail },
+          { email: AccountController.User.email },
           { password: AccountController.User.newPassword },
         )
           .then(() => {
@@ -145,7 +91,6 @@ class AccountController {
     var nodemailer = require('nodemailer');
     const codeRandom = Math.floor(Math.random() * 100000);
     req.session.codeEmail = codeRandom;
-    console.log(req.session);
     const textCode = 'Code: ' + codeRandom.toString();
 
     var transporter = nodemailer.createTransport({
@@ -157,7 +102,7 @@ class AccountController {
     });
     var mailOptions = {
       from: 'ilovethubumbi@gmail.com',
-      to: req.body.gmail,
+      to: req.body.email,
       subject: 'Restore Password',
       text: textCode,
     };
@@ -183,7 +128,7 @@ class AccountController {
         await socket.disconnect();
         dataAccount.list_slug_friend.forEach(async (slug_friend) => {
           new AccountController().loadFriendOnline(
-            await getDataAccount_bySlug(slug_friend),
+            await findOneBySlug(slug_friend),
             socket,
           );
         });
@@ -193,19 +138,17 @@ class AccountController {
   }
 
   async getlistfriendonline(req) {
-    var account = await getDataAccount_byID(req.session.loginEd);
+    var account = await findOneById(req.session.loginEd);
     console.log('getlistfriendonline', account);
   }
   async getPersonalPageWithSlug(req, res) {
-    var dataAccount_own = await getDataAccount_byID(req.session.loginEd);
+    var dataAccount_own = await findOneById(req.session.loginEd);
     if (
       dataAccount_own &&
       dataAccount_own.slug_personal !== req.params.slug_personal
     ) {
       var id_chatPersonalPage = null;
-      var dataAccount_other = await getDataAccount_bySlug(
-        req.params.slug_personal,
-      );
+      var dataAccount_other = await findOneBySlug(req.params.slug_personal);
       id_chatPersonalPage = await Promise.all(
         dataAccount_own.list_id_box_chat.map(async (id_box_chat) => {
           var box_chat = await chatController.getDetailChat_withID(
@@ -273,13 +216,11 @@ class AccountController {
     const keyword = req.query.keyword;
     await Account.find().then((account) => {
       const filter_user = account.filter((value) => {
-        console.log(value.user_lname.toUpperCase(), keyword.toUpperCase());
+        console.log(value.lname.toUpperCase(), keyword.toUpperCase());
         return (
-          (
-            value.user_fname.toUpperCase() +
-            ' ' +
-            value.user_lname.toUpperCase()
-          ).indexOf(keyword.toUpperCase()) > -1
+          (value.fname.toUpperCase() + ' ' + value.lname.toUpperCase()).indexOf(
+            keyword.toUpperCase(),
+          ) > -1
         );
       });
       console.log('filter_user', filter_user);

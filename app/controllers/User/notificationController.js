@@ -1,4 +1,5 @@
-const { getDataAccount_byID } = require('../models/Account');
+const { findOneById } = require('../../repositories/AccountRepository');
+
 class NotificationController {
   async request_getNotification(req, res) {
     res.send(
@@ -8,12 +9,12 @@ class NotificationController {
     );
   }
   async getNotification({ id }) {
-    var dataAccount = await getDataAccount_byID(id);
+    var dataAccount = await findOneById(id);
 
     return dataAccount.notification;
   }
   async request_clearCountNotification(req, res) {
-    var dataAccount = await getDataAccount_byID(req.session.loginEd);
+    var dataAccount = await findOneById(req.session.loginEd);
     dataAccount.count_notification = 0;
     dataAccount.save();
     res.send({ mess: 'ok' });
