@@ -79,7 +79,6 @@ class DriveController {
     //  console.log(result);
     return result;
   }
-
   async uploadFile({ bufferStream, name, mineType, idFolderParent }) {
     try {
       var res = await drive.files.create({

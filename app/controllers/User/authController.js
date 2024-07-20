@@ -19,5 +19,32 @@ class AuthController extends BaseController {
     authHandler.signUp(req.dto);
     res.success(null, 200, 'sign up success');
   }
+
+  async restorePassword(req, res) {
+    const optCode = await authHandler.restorePassword(req.dto);
+
+    if (optCode) {
+      req.session.codeEmail = optCode;
+    }
+
+    res.success({ status: optCode ? 'ok' : 'failed' }, 200);
+  }
+
+  checkCodeEmail() {
+    // if (AccountController.User) {
+    //   if (accountController.User.code == AccountController.User.code) {
+    //     Account.updateOne(
+    //       { email: AccountController.User.email },
+    //       { password: AccountController.User.newPassword },
+    //     )
+    //       .then(() => {
+    //         console.log('Restore Password Success');
+    //       })
+    //       .catch(() => {
+    //         console.log('Restore Password Fail');
+    //       });
+    //   }
+    // }
+  }
 }
 module.exports = new AuthController();

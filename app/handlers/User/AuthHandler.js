@@ -1,6 +1,7 @@
 const InternalServerException = require('../../exceptions/InternalServerException');
 const UnauthorizedException = require('../../exceptions/UnauthorizedException');
 const Account = require('../../models/Account');
+var nodemailer = require('nodemailer');
 require('dotenv').config();
 global.listSocketOnline = [];
 
@@ -29,6 +30,34 @@ class AuthHandler {
     dto.slug_personal = slug_personal;
     Account.create(dto).catch((error) => {
       throw new InternalServerException(error.message);
+    });
+  }
+
+  async restorePassword(dto) {
+    const codeRandom = Math.floor(Math.random() * 100000);
+    const textCode = 'Code: ' + codeRandom.toString();
+
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'ilovethubumbi@gmail.com',
+        pass: 'mazyvmjthmkrzzcg',
+      },
+    });
+    const mailOptions = {
+      from: 'ilovethubumbi@gmail.com',
+      to: dto.email,
+      subject: 'Restore Password',
+      text: textCode,
+    };
+
+    // eslint-disable-next-line no-unused-vars
+    await transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        throw new InternalServerException('Mail Service not working');
+      }
+
+      return codeRandom;
     });
   }
 }

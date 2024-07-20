@@ -1,6 +1,5 @@
-const Account = require('../../models/Account');
+const chatHandler = require('../../handlers/User/ChatHandler');
 const { BoxChat } = require('../../models/BoxChat');
-const { Chat } = require('../../models/BoxChat');
 const {
   findOneById,
   findOneBySlug,
@@ -11,127 +10,12 @@ const mongoose = require('mongoose');
 
 class chatController {
   async getListBoxChat(req, res) {
-    var listBoxChat = [];
-    var slug_personal;
-
-    var result = await findOneById(req.session.loginEd);
-    if (result) {
-      slug_personal = result.slug_personal;
-      listBoxChat = Promise.all(
-        result.list_id_box_chat.map(async (boxChat) => {
-          var list_box_chat = await BoxChat.find({ _id: boxChat }).select({
-            members: 1,
-            content_messages: 1,
-            _id: 1,
-            name_chat: 1,
-            avatar_chat: 1,
-            last_interact: 1,
-          });
-
-          listBoxChat = Promise.all(
-            list_box_chat.map(async (box_chat) => {
-              return await new chatController().getShortChat(
-                box_chat,
-                req.session.loginEd,
-              );
-            }),
-          );
-
-          return listBoxChat;
-        }),
-      );
-      listBoxChat.then(async (data) => {
-        var list_boxChat = [];
-        await Promise.all(
-          data.map(async (el) => {
-            if (el[0].lastSessionMessage) {
-              var dataBoxChat = await BoxChat.findOne({ _id: el[0]._id });
-              var is = dataBoxChat.members.some((el) => {
-                return (
-                  el.slug_member == slug_personal &&
-                  el.startContent &&
-                  el.startContent > 0 &&
-                  el.startContent == dataBoxChat.content_messages.length - 1
-                );
-              });
-              if (!is) {
-                list_boxChat.push(el[0]);
-                return el[0];
-              }
-            }
-          }),
-        );
-        listBoxChat = await listBoxChat;
-        list_boxChat.filter((el) => el != null);
-        list_boxChat.forEach((box_chat, idx) => {
-          if (idx !== 0) {
-            var i = idx - 1;
-            var tmp = box_chat;
-            while (
-              i >= 0 &&
-              tmp.lastSessionMessage &&
-              list_boxChat[i].lastSessionMessage &&
-              new Date(list_boxChat[i].lastSessionMessage.time_send).getTime() <
-                new Date(tmp.lastSessionMessage.time_send).getTime()
-            ) {
-              list_boxChat[i + 1] = list_boxChat[i];
-              i--;
-            }
-            list_boxChat[i + 1] = tmp;
-          }
-        });
-        res.send(list_boxChat);
-      });
-    } else {
-      res.send('Noooo');
-    }
+    res.success(await chatHandler.getListBoxChat(req.user));
   }
 
-  async request_getDetailChat(req, res) {
-    console.log('request_getDetailChat() running');
-    // load last message seen
-    var dataAccount = await findOneById(req.session.loginEd);
-    if (!JSON.parse(req.query.isSeen)) {
-      console.log(req.session.loginEd);
-      var box_chat = await BoxChat.findOne({ _id: JSON.parse(req.query._id) });
-      box_chat.members = Promise.all(
-        await box_chat.members.map((member) => {
-          if (member.slug_member == dataAccount.slug_personal) {
-            member.last_seen_content_message =
-              box_chat.content_messages.length - 1 + '';
-          }
-          return member;
-        }),
-      );
-      // console.log(box_chat.members);
-      box_chat.members[0].then((update_members) => {
-        // console.log(update_members);
-        box_chat.members = update_members;
-        box_chat.save();
-      });
-    }
-    var result = await new chatController().getDetailChat_withID(
-      JSON.parse(req.query._id),
-      req.session.loginEd,
-    );
-    result.members.forEach((member) => {
-      if (
-        member.slug_member == dataAccount.slug_personal &&
-        member.startContent > 0
-      ) {
-        result.content_messages = result.content_messages.filter(
-          (content_message, idx) => idx > member.startContent,
-        );
-      }
-    });
-    res.send({
-      result,
-      shortChat: await new chatController().getShortChat(
-        result,
-        req.session.loginEd,
-      ),
-    });
-
+  async getDetailChat(req, res) {
+    const data = await chatHandler.getDetailChat(req.user, req.dto);
+    res.success(data);
     // res.send(req.params._id)
   }
   async addMessage({ idChat, value_content_sessionMessage }) {
@@ -180,128 +64,111 @@ class chatController {
     });
   }
   async request_saveMessage(req, res) {
-    console.log(`request_saveMessage Running`);
     // console.log();
-    const path = `API_SocialMusic/message/${req.body.idChat}`;
-    DriveController.searchFolderWithPath(path)
-      .then((data) => data)
-      .then(async (result) => {
-        if (!result) {
-          // var folder_parent= await DriveController.searchFolderWithPath('API_SocialMusic/message')
-          // console.log(folder_parent);
-          var folder_parent = await DriveController.searchFolderWithPath(
-            'API_SocialMusic/message',
-          );
-          console.log(folder_parent.id);
-          result = await DriveController.createFolder({
-            name: req.body.idChat,
-            idFolderParent: folder_parent.id,
-          });
-        }
-        const stream = require('stream');
-        var listURLFile = await Promise.all(
-          req.files.map(async (file) => {
-            file.originalname = Buffer.from(
-              file.originalname,
-              'latin1',
-            ).toString('utf8');
-            var bufferStream = stream.PassThrough();
-            bufferStream.end(file.buffer);
-            return await DriveController.uploadFile({
-              bufferStream: bufferStream,
-              idFolderParent: [result.id],
-              name: file.originalname,
-              mineType: file.mimetype,
-            });
-          }),
-        );
-        var value_content_sessionMessage = JSON.parse(
-          req.body.value_content_sessionMessage,
-        );
-        var data_files = listURLFile;
-        if (data_files.length > 0) {
-          data_files.forEach((data_file, idx) => {
-            console.log(data_file);
-            switch (data_file.mimeType.split('/')[0]) {
-              case 'image':
-                value_content_sessionMessage.session_messages.forEach(
-                  (session_message) => {
-                    if (session_message.image != null) {
-                      session_message.image = `https://drive.google.com/uc?export=view&id=${data_file.id}`;
-                      // console.log(session_message.image);
-                    }
-                  },
-                );
-                break;
-              case 'video':
-                value_content_sessionMessage.session_messages.forEach(
-                  (session_message) => {
-                    if (session_message.video != null) {
-                      session_message.video = `https://drive.google.com/uc?export=view&id=${data_file.id}`;
-                      // console.log(session_message.video);
-                    }
-                  },
-                );
-                break;
 
-              case 'audio':
-                value_content_sessionMessage.session_messages.forEach(
-                  (session_message) => {
-                    if (session_message.audio != null) {
-                      session_message.audio = `https://drive.google.com/uc?export=view&id=${data_file.id}`;
-                      // console.log(session_message.audio);
-                    }
-                  },
-                );
-                break;
-              case 'application':
-                value_content_sessionMessage.session_messages.forEach(
-                  (session_message) => {
-                    if (session_message.application != null) {
-                      session_message.application = {
-                        urlFile: `https://drive.google.com/uc?export=view&id=${data_file.id}`,
-                        nameFile: data_file.name,
-                        size: req.files[idx].size,
-                      };
-                      // console.log(session_message.application);
-                    }
-                  },
-                );
-                break;
-              default:
-                break;
-            }
-          });
-        }
-
-        new chatController().addMessage({
-          idChat: req.body.idChat,
-          value_content_sessionMessage,
-        });
-      });
-
-    res.send({ result: 'OK' });
-  }
-  async getDetailChat_withID(_id) {
-    var data = await BoxChat.findOne({ _id });
-    data.content_messages = await Promise.all(
-      data.content_messages.map(async (content_message) => {
-        var account_sender = await findOneBySlug(content_message.slug_sender);
-        content_message.avatar_account = account_sender.avatar_account;
-        data.members.forEach((member) => {
-          if (member.slug_member == content_message.slug_sender) {
-            if (member.nick_name) {
-              content_message.name_sender = member.nick_name;
-            } else {
-              content_message.name_sender = `${account_sender.fname} ${account_sender.lname}`;
-            }
-          }
-        });
-        return content_message;
-      }),
+    const value_content_sessionMessage = JSON.parse(
+      req.body.value_content_sessionMessage,
     );
 
-    return data;
+    // if (false) {
+      // const path = `API_SocialMusic/message/${req.body.idChat}`;
+    //   DriveController.searchFolderWithPath(path)
+    //     .then((data) => data)
+    //     .then(async (result) => {
+    //       if (!result) {
+    //         // var folder_parent= await DriveController.searchFolderWithPath('API_SocialMusic/message')
+    //         // console.log(folder_parent);
+    //         var folder_parent = await DriveController.searchFolderWithPath(
+    //           'API_SocialMusic/message',
+    //         );
+
+    //         result = await DriveController.createFolder({
+    //           name: req.body.idChat,
+    //           idFolderParent: folder_parent.id,
+    //         });
+    //       }
+    //       const stream = require('stream');
+    //       var listURLFile = await Promise.all(
+    //         req.files.map(async (file) => {
+    //           file.originalname = Buffer.from(
+    //             file.originalname,
+    //             'latin1',
+    //           ).toString('utf8');
+    //           var bufferStream = stream.PassThrough();
+    //           bufferStream.end(file.buffer);
+    //           return await DriveController.uploadFile({
+    //             bufferStream: bufferStream,
+    //             idFolderParent: [result.id],
+    //             name: file.originalname,
+    //             mineType: file.mimetype,
+    //           });
+    //         }),
+    //       );
+
+    //       var data_files = listURLFile;
+    //       if (data_files.length > 0) {
+    //         data_files.forEach((data_file, idx) => {
+    //           console.log(data_file);
+    //           switch (data_file.mimeType.split('/')[0]) {
+    //             case 'image':
+    //               value_content_sessionMessage.session_messages.forEach(
+    //                 (session_message) => {
+    //                   if (session_message.image != null) {
+    //                     session_message.image = `https://drive.google.com/uc?export=view&id=${data_file.id}`;
+    //                     // console.log(session_message.image);
+    //                   }
+    //                 },
+    //               );
+    //               break;
+    //             case 'video':
+    //               value_content_sessionMessage.session_messages.forEach(
+    //                 (session_message) => {
+    //                   if (session_message.video != null) {
+    //                     session_message.video = `https://drive.google.com/uc?export=view&id=${data_file.id}`;
+    //                     // console.log(session_message.video);
+    //                   }
+    //                 },
+    //               );
+    //               break;
+
+    //             case 'audio':
+    //               value_content_sessionMessage.session_messages.forEach(
+    //                 (session_message) => {
+    //                   if (session_message.audio != null) {
+    //                     session_message.audio = `https://drive.google.com/uc?export=view&id=${data_file.id}`;
+    //                     // console.log(session_message.audio);
+    //                   }
+    //                 },
+    //               );
+    //               break;
+    //             case 'application':
+    //               value_content_sessionMessage.session_messages.forEach(
+    //                 (session_message) => {
+    //                   if (session_message.application != null) {
+    //                     session_message.application = {
+    //                       urlFile: `https://drive.google.com/uc?export=view&id=${data_file.id}`,
+    //                       nameFile: data_file.name,
+    //                       size: req.files[idx].size,
+    //                     };
+    //                     // console.log(session_message.application);
+    //                   }
+    //                 },
+    //               );
+    //               break;
+    //             default:
+    //               break;
+    //           }
+    //         });
+    //       }
+    //     });
+    // }
+
+    new chatController().addMessage({
+      idChat: req.body.idChat,
+      value_content_sessionMessage,
+    });
+
+    res.send({ result: 'OK' });
   }
   listSockChat = new Set();
   async load_roomSocket_Chat(account) {
@@ -527,75 +394,6 @@ class chatController {
     box_chat_src.save();
     res.send({ mess: 'ok' });
   }
-  async getShortChat(box_chat, idAccount) {
-    console.log('getShortChat() running', idAccount);
-    var tmpBoxChat = new Chat();
-    var your_slug = [];
-    tmpBoxChat.last_interact = box_chat.last_interact;
-
-    var dataAccount = await findOneById(idAccount);
-    box_chat.members.forEach((member) => {
-      if (member.slug_member == dataAccount.slug_personal) {
-        var idx_Content_message = member.last_seen_content_message
-          ? parseInt(member.last_seen_content_message.split('/')[0])
-          : null;
-        if (idx_Content_message) {
-          if (idx_Content_message < box_chat.content_messages.length - 1) {
-            tmpBoxChat.isSeen = false;
-          } else {
-            tmpBoxChat.isSeen = true;
-          }
-        }
-      }
-    });
-
-    if (box_chat.content_messages.length > 0) {
-      var session_messages =
-        box_chat.content_messages[box_chat.content_messages.length - 1]
-          .session_messages;
-      if (session_messages.length > 0) {
-        tmpBoxChat.lastSessionMessage =
-          session_messages[session_messages.length - 1];
-      } else {
-        tmpBoxChat.lastSessionMessage = [];
-      }
-      var dataAccountSender = await findOneBySlug(
-        box_chat.content_messages[box_chat.content_messages.length - 1]
-          .slug_sender,
-      );
-      tmpBoxChat.name_sender = dataAccountSender.lname;
-
-      tmpBoxChat.slug_sender =
-        box_chat.content_messages[
-          box_chat.content_messages.length - 1
-        ].slug_sender;
-    }
-
-    tmpBoxChat._id = box_chat._id;
-    if (box_chat.members.length == 2 && box_chat.name_chat == null) {
-      your_slug = box_chat.members.filter((el) => {
-        return el.slug_member != dataAccount.slug_personal;
-      });
-      var dataMember = await Account.findOne({
-        slug_personal: your_slug[0].slug_member,
-      }).select({
-        avatar_account: 1,
-        fname: 1,
-        lname: 1,
-      });
-
-      tmpBoxChat.avatarChat = dataMember.avatar_account;
-      if (your_slug[0].nick_name) {
-        tmpBoxChat.nameChat = your_slug[0].nick_name;
-      } else {
-        tmpBoxChat.nameChat = await (dataMember.fname + ' ' + dataMember.lname);
-      }
-    } else {
-      tmpBoxChat.nameChat = box_chat.name_chat;
-      tmpBoxChat.avatarChat = box_chat.avatar_chat;
-    }
-    return tmpBoxChat;
-  }
   async request_getMembers(req, res) {
     console.log('request_getMembers() running');
     var idChat = req.body.idChat;
@@ -646,7 +444,7 @@ class chatController {
     var data_box_chats = await Promise.all(
       data_account.list_id_box_chat.map(async (id_box_chat) => {
         // console.log(id_box_chat);
-        return new chatController().getShortChat(
+        return chatHandler.getShortChat(
           await BoxChat.findOne({ _id: id_box_chat }),
           req.session.loginEd,
         );

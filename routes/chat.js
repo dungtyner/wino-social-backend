@@ -1,9 +1,15 @@
 const express = require('express');
-const chatController = require('../app/controllers/chatController');
+const chatController = require('../app/controllers/User/chatController');
+const validateDto = require('../app/middlewares/validateDTO');
+const GetDetailChatDto = require('../app/DTO/User/Chat/GetDetailChatDTO');
 const router = express.Router();
-router.get('/getListBoxChat', chatController.getListBoxChat);
+router.get('/get-list-box-chat', chatController.getListBoxChat);
 router.get('/search', chatController.request_search);
-router.get('/getDetailChat', chatController.request_getDetailChat);
+router.get(
+  '/get-detail-chat',
+  validateDto(GetDetailChatDto),
+  chatController.getDetailChat,
+);
 router.post(
   '/saveMessage',
   global.uploads.array('listFile'),

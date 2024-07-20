@@ -1,9 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const friendController = require('../app/controllers/friendController');
-const accountController = require('../app/controllers/accountController');
+const friendController = require('../app/controllers/User/friendController');
+const accountController = require('../app/controllers/User/AccountController');
+const validateDto = require('../app/middlewares/validateDTO');
+const AddFriendDto = require('../app/DTO/User/Friend/AddFriendDTO');
+const CancelRequestAddFriendDto = require('../app/DTO/User/Friend/CancelRequestAddFriendDTO');
 
-router.get('/getListFriend', friendController.req_getListFriend);
+router.get('/get-list-friend', friendController.getListFriend);
 router.get('/getListRequestFriend', friendController.req_getListRequestFriend);
 router.get(
   '/getListResponseFriend',
@@ -20,10 +23,15 @@ router.get(
   accountController.getPersonalPageWithSlug,
 );
 
-router.post('/requestAddFriend', friendController.requestAddFriend);
 router.post(
-  '/remove_requestAddFriend',
-  friendController.remove_requestAddFriend,
+  '/request-add-friend',
+  validateDto(AddFriendDto),
+  friendController.requestAddFriend,
+);
+router.post(
+  '/cancel-request-add-friend',
+  validateDto(CancelRequestAddFriendDto),
+  friendController.cancelRequestAddFriend,
 );
 router.post(
   '/refuse_requestAddFriend',
