@@ -13,7 +13,7 @@ const oauth2_client = new google.auth.OAuth2(
 );
 oauth2_client.setCredentials({ refresh_token: refresh_token });
 const drive = google.drive({ version: 'v3', auth: oauth2_client });
-class DriveController {
+class DriveStorageService {
   async SearchFolderWithName(nameFolder) {
     try {
       var response = await drive.files.list({
@@ -60,19 +60,17 @@ class DriveController {
     result = Promise.resolve(
       await arr_path.map(async (folder, idx) => {
         if (idx == arr_path.length - 1) {
-          folder_parent =
-            await new DriveController().SearchFolder_WithName_inFolder(
-              arr_path[idx],
-              folder_parent,
-            );
+          folder_parent = await this.SearchFolder_WithName_inFolder(
+            arr_path[idx],
+            folder_parent,
+          );
           // console.log(folder_parent);
           return folder_parent;
         } else {
-          folder_parent =
-            await new DriveController().SearchFolder_WithName_inFolder(
-              arr_path[idx],
-              folder_parent,
-            );
+          folder_parent = await this.SearchFolder_WithName_inFolder(
+            arr_path[idx],
+            folder_parent,
+          );
         }
       })[arr_path.length - 1],
     );
@@ -126,4 +124,4 @@ class DriveController {
   }
 }
 
-module.exports = new DriveController();
+module.exports = new DriveStorageService();

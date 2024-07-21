@@ -1,23 +1,13 @@
-const { findOneById } = require('../../repositories/AccountRepository');
+const notificationHandler = require('../../handlers/User/NotificationHandler');
 
 class NotificationController {
-  async request_getNotification(req, res) {
-    res.send(
-      await new NotificationController().getNotification({
-        id: req.session.loginEd,
-      }),
-    );
+  async getNotification(req, res) {
+    res.success(req.user.notification);
   }
-  async getNotification({ id }) {
-    var dataAccount = await findOneById(id);
 
-    return dataAccount.notification;
-  }
-  async request_clearCountNotification(req, res) {
-    var dataAccount = await findOneById(req.session.loginEd);
-    dataAccount.count_notification = 0;
-    dataAccount.save();
-    res.send({ mess: 'ok' });
+  async clearCountNotification(req, res) {
+    notificationHandler.clearCountNotification(req.user);
+    res.success({ mess: 'ok' });
   }
 }
 function NotificationResponseAddNewFriend({ friend, post }) {
@@ -28,4 +18,3 @@ module.exports = {
   NotificationController: new NotificationController(),
   NotificationResponseAddNewFriend,
 };
-// module.exports={NotificationResponseAddNewFriend};

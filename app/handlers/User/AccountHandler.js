@@ -1,5 +1,4 @@
 const { getCountNotificationChat } = require('../../models/BoxChat');
-const chatController = require('../../controllers/User/chatController');
 const Account = require('../../models/Account');
 const BoxChat = require('../../models/BoxChat');
 const { findOneBySlug } = require('../../repositories/AccountRepository');
@@ -12,7 +11,7 @@ class AccountHandler {
   async checkIsActivated(user) {
     const account = user;
 
-    chatController.load_roomSocket_Chat(account);
+    chatService.load_roomSocket_Chat(account);
     account.count_notification_chat = await getCountNotificationChat({
       id_account: account._id,
     });

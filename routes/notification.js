@@ -1,14 +1,17 @@
 const express = require('express');
+const isAuthenticated = require('../app/middlewares/auth');
 const router = express.Router();
 const notificationController =
-  require('../app/controllers/notificationController').NotificationController;
+  require('../app/controllers/User/notificationController').NotificationController;
 router.get(
-  '/request_getNotification',
-  notificationController.request_getNotification,
+  '/get-notification',
+  isAuthenticated,
+  notificationController.getNotification,
 );
 router.get(
-  '/clearCountNotification',
-  notificationController.request_clearCountNotification,
+  '/clear-count-notification',
+  isAuthenticated,
+  notificationController.clearCountNotification,
 );
 
 module.exports = router;

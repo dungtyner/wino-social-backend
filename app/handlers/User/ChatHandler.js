@@ -1,9 +1,14 @@
+const driveStorageService = require('../../services/DriveStorageService');
 const Account = require('../../models/Account');
 const { BoxChat, Chat } = require('../../models/BoxChat');
-const { findOneById, findOneBySlug } = require('../../repositories/AccountRepository');
+const {
+  findOneById,
+  findOneBySlug,
+} = require('../../repositories/AccountRepository');
 const chatService = require('../../services/ChatService');
+const mongoose = require('mongoose');
 
-class ChatController {
+class ChatHandler {
   async getListBoxChat(user) {
     const slug_personal = user.slug_personal;
     var listBoxChat = Promise.all(
@@ -105,7 +110,7 @@ class ChatController {
 
     return {
       result,
-      shortChat: this.getShortChat(result, user.id),
+      shortChat: await this.getShortChat(result, user.id),
     };
   }
 
@@ -159,7 +164,6 @@ class ChatController {
 
     if (box_chat.members.length == 2 && box_chat.name_chat == null) {
       your_slug = box_chat.members.filter((el) => {
-        console.log(el);
         return el.slug_member != dataAccount.slug_personal;
       });
 
@@ -178,11 +182,368 @@ class ChatController {
         tmpBoxChat.nameChat = await (dataMember.fname + ' ' + dataMember.lname);
       }
     } else {
-      tmpBoxChat.nameChat = box_chat.name_chat;
+      tmpBoxChat.nameChat = box_chat.name_chat ?? 'anomyus';
       tmpBoxChat.avatarChat = box_chat.avatar_chat;
     }
+
     return tmpBoxChat;
+  }
+
+  async sendMessage(boxChatId, dto) {
+    const message = dto.message;
+
+    return await this.addMessage({
+      idChat: boxChatId,
+      message,
+    });
+  }
+
+  async uploadMediaMessage(boxChatId, files = null) {
+    if (files && files.length > 0) {
+      const path = `API_SocialMusic/message/${boxChatId}`;
+      return await driveStorageService
+        .searchFolderWithPath(path)
+        .then((data) => data)
+        .then(async (result) => {
+          if (!result) {
+            // var folder_parent= await DriveStorageService.searchFolderWithPath('API_SocialMusic/message')
+            var folder_parent = await driveStorageService.searchFolderWithPath(
+              'API_SocialMusic/message',
+            );
+
+            result = await driveStorageService.createFolder({
+              name: boxChatId,
+              idFolderParent: folder_parent.id,
+            });
+          }
+          const stream = require('stream');
+          var listURLFile = await Promise.all(
+            files.map(async (file) => {
+              file.originalname = Buffer.from(
+                file.originalname,
+                'latin1',
+              ).toString('utf8');
+              var bufferStream = stream.PassThrough();
+              bufferStream.end(file.buffer);
+              return await driveStorageService.uploadFile({
+                bufferStream: bufferStream,
+                idFolderParent: [result.id],
+                name: file.originalname,
+                mineType: file.mimetype,
+              });
+            }),
+          );
+
+          const data_files = listURLFile;
+          if (data_files.length > 0) {
+            return data_files.map((data_file, idx) => {
+              switch (data_file.mimeType.split('/')[0]) {
+                case 'image':
+                  return {
+                    image: `https://drive.google.com/uc?export=view&id=${data_file.id}`,
+                  };
+                case 'video':
+                  return {
+                    video: `https://drive.google.com/uc?export=view&id=${data_file.id}`,
+                  };
+
+                case 'audio':
+                  return {
+                    audio: `https://drive.google.com/uc?export=view&id=${data_file.id}`,
+                  };
+                case 'application':
+                  return {
+                    application: {
+                      urlFile: `https://drive.google.com/uc?export=view&id=${data_file.id}`,
+                      nameFile: data_file.name,
+                      size: files[idx].size,
+                    },
+                  };
+                default:
+                  break;
+              }
+            });
+          }
+        });
+    }
+  }
+
+  async addMessage({ idChat, message }) {
+    BoxChat.findOne({ _id: idChat }).then(async (data) => {
+      message.id_content_message = new mongoose.Types.ObjectId();
+      data.content_messages = data.content_messages.concat(message);
+      data.members = Promise.all(
+        await data.members.map(async (member) => {
+          // console.log(member.slug_member,message.slug_sender);
+          if (member.slug_member != message.slug_sender) {
+            member.notification = true;
+            return member;
+          } else {
+            member.last_seen_content_message = `${
+              data.content_messages.length - 1
+            }`;
+            member.notification = false;
+            return member;
+          }
+        }),
+      );
+      data.members[0].then((update_members) => {
+        data.members = update_members;
+        data.last_interact = null;
+        data.save();
+      });
+    });
+
+    var account = await findOneBySlug(message.slug_sender);
+    var nsp_chat = global.io.of('/chat');
+    await nsp_chat.to(`CHAT_${idChat}`).emit(`PEOPLE_${idChat}_SENDING`, {
+      account,
+      message,
+    });
+    await nsp_chat.to(`CHAT_${idChat}`).emit(`PEOPLE_SENDING`, {
+      id_Chat: idChat,
+      slug_sender: account.slug_personal,
+      time_send:
+        message.session_messages[message.session_messages.length - 1].time_send,
+    });
+  }
+
+  async modifyNameBoxChat(boxChatId, dto) {
+    var boxChat = await BoxChat.findOne({ _id: boxChatId });
+    boxChat.name_chat = dto.nameChat;
+    boxChat.markModified('name_chat'), boxChat.save();
+  }
+
+  async searchBoxChat(user, dto) {
+    const boxChats = await Promise.all(
+      user.list_id_box_chat.map(async (boxChatId) => {
+        return this.getShortChat(
+          await BoxChat.findOne({ _id: boxChatId }),
+          user.id,
+        );
+      }),
+    );
+
+    return boxChats.filter((boxChat) => {
+      return (
+        boxChat.nameChat
+          .toLocaleLowerCase()
+          .indexOf(dto.keyword.toLocaleLowerCase()) > -1
+      );
+    });
+  }
+
+  async forwardToMessage(user, dto) {
+    var contentMessageIndex = dto.sessionMessageIndex.split('/')[0];
+    var sessionMessageIndex = dto.sessionMessageIndex.split('/')[1];
+    var boxChatFrom = await BoxChat.findOne({ _id: dto.boxChatIdFrom });
+    var newSessionMessage =
+      boxChatFrom.content_messages[contentMessageIndex].session_messages[
+        sessionMessageIndex
+      ];
+    newSessionMessage.time_send = new Date().toISOString();
+    newSessionMessage.isShare = true;
+    newSessionMessage.interact = [];
+    newSessionMessage.reply = null;
+
+    this.addMessage({
+      idChat: dto.boxChatIdTo,
+      message: {
+        session_messages: [newSessionMessage],
+        slug_sender: user.slug_personal,
+      },
+    });
+
+    boxChatFrom.content_messages[contentMessageIndex].session_messages[
+      sessionMessageIndex
+    ].isShare = true;
+
+    boxChatFrom.markModified('content_messages');
+    boxChatFrom.save();
+  }
+
+  async removeSessionMessage(boxChatId, dto) {
+    var contentMessageIndex = dto.sessionMessageIndex.split('/')[0];
+    var sessionMessageIndex = dto.sessionMessageIndex.split('/')[1];
+    var boxChat = await BoxChat.findOne({ _id: boxChatId });
+    var tempSessionMess =
+      boxChat.content_messages[contentMessageIndex].session_messages[
+        sessionMessageIndex
+      ];
+    if (!tempSessionMess.isShare) {
+      var files = this.filterMessFile(tempSessionMess);
+      files.forEach(async (file) => {
+        if (file.type != 'application') {
+          var id_file = file.value.substring(
+            'https://drive.google.com/uc?export=view&id='.length,
+            file.value.length,
+          );
+          await driveStorageService.deleteFile({
+            fileID: id_file,
+          });
+        } else {
+          id_file = file.value.urlFile.substring(
+            'https://drive.google.com/uc?export=view&id='.length,
+            file.value.urlFile.length,
+          );
+          await driveStorageService.deleteFile({
+            fileID: id_file,
+          });
+        }
+      });
+    }
+
+    boxChat.content_messages[contentMessageIndex].session_messages[
+      sessionMessageIndex
+    ] = null;
+    boxChat.content_messages[contentMessageIndex].session_messages[
+      sessionMessageIndex
+    ] = { time_send: tempSessionMess.time_send };
+    boxChat.content_messages.forEach((content_message) => {
+      content_message.session_messages.forEach((sessionMessage) => {
+        if (sessionMessage != null) {
+          if (sessionMessage.reply != null) {
+            if (
+              sessionMessage.reply.slug_sender == dto.slugSender &&
+              sessionMessage.reply.sessionMessage.time_send ==
+                tempSessionMess.time_send
+            )
+              sessionMessage.reply = null;
+          }
+        }
+      });
+    });
+    boxChat.markModified('content_messages');
+    boxChat.save();
+    const nsp_chat = global.io.of('/chat');
+    await nsp_chat
+      .to(`CHAT_${boxChatId}`)
+      .emit(`PEOPLE_${dto.boxChatId}_REMOVING`, {
+        idx_sessionMessage: dto.sessionMessageIndex,
+        slug_sender: dto.slugSender,
+        idChat: boxChatId,
+      });
+  }
+
+  filterMessFile(sessionMess) {
+    const typeFiles = ['video', 'image', 'audio', 'video', 'application'];
+    var values = Object.values(sessionMess);
+    var result = [];
+    var keys = Object.keys(sessionMess);
+    values.forEach((value, idx) => {
+      if (value != null) {
+        if (value.length > 0) {
+          if (typeFiles.indexOf(keys[idx]) > -1) {
+            result.push({ type: keys[idx], value: value });
+          }
+        } else if (Object.keys(value).length > 0) {
+          if (typeFiles.indexOf(keys[idx]) > -1) {
+            result.push({ type: keys[idx], value: value });
+          }
+        }
+      }
+    });
+    return result;
+  }
+
+  async updateInteractMessage(boxChatId, dto) {
+    await this.updateInteractMess({
+      idChat: boxChatId,
+      sessionMessageIndex: dto.sessionMessageIndex,
+      sessionMessageValue: dto.sessionMessageValue,
+      socket: dto.socket,
+      isNotification: dto.isNotification,
+    });
+  }
+
+  async updateInteractMess({
+    idChat,
+    sessionMessageValue,
+    sessionMessageIndex,
+    socket,
+    isNotification,
+  }) {
+    const boxChat = await BoxChat.findOne({ _id: idChat });
+    const contentMessageIndex = sessionMessageIndex.split('/')[0];
+    const sessionMessageIndexUpdate = sessionMessageIndex.split('/')[1];
+    boxChat.content_messages[contentMessageIndex].session_messages[
+      sessionMessageIndexUpdate
+    ] = sessionMessageValue;
+    // console.log(boxChat.content_messages[contentMessageIndex].session_messages[sessionMessageIndexUpdate]);
+    boxChat.markModified('content_messages');
+
+    if (isNotification) {
+      boxChat.last_interact =
+        sessionMessageValue.interact[sessionMessageValue.interact.length - 1];
+      boxChat.markModified('last_interact');
+    }
+
+    var nsp_chat = global.io.of('/chat');
+    await nsp_chat
+      .to(`CHAT_${idChat}`)
+      .except(socket)
+      .emit(`PEOPLE_${idChat}_REACTING`, {
+        idChat,
+        sessionMessageValue,
+        sessionMessageIndex,
+      });
+    boxChat.save();
+  }
+
+  async clearNotificationChat(user, dto) {
+    var list_id_box_chat = dto.boxChatIds.split(',');
+    list_id_box_chat.forEach(async (box_chat) => {
+      var dataBoxChat = await BoxChat.findOne({ _id: box_chat });
+      dataBoxChat.members = Promise.all(
+        await dataBoxChat.members.map(async (member) => {
+          if (member.slug_member == user.slug_personal) {
+            member.notification = false;
+          }
+          return member;
+        }),
+      );
+
+      dataBoxChat.members[0].then((updateMembers) => {
+        dataBoxChat.members = updateMembers;
+        dataBoxChat.save();
+      });
+    });
+  }
+
+  async getMembers(boxChatId) {
+    const dataChat = await BoxChat.findOne({ _id: boxChatId });
+    return await Promise.all(
+      dataChat.members.map(async (member) => {
+        var tmp_member = await findOneBySlug(member.slug_member);
+        member.detail = tmp_member;
+        return member;
+      }),
+    );
+  }
+
+  async removeChat(user, boxChatId) {
+    var boxChat = await BoxChat.findOne({ _id: boxChatId });
+
+    boxChat.members.forEach((member, idx) => {
+      if (member.slug_member == user.slug_personal) {
+        boxChat.members[idx].startContent = boxChat.content_messages.length - 1;
+      }
+    });
+
+    boxChat.markModified('members');
+    await boxChat.save();
+  }
+
+  async updateMemberNickname(boxChatId, dto) {
+    var boxChat = await BoxChat.findOne({ _id: boxChatId });
+    boxChat.members.forEach((member) => {
+      if (member.slug_member == dto.slugMember) {
+        member.nick_name = dto.nickname;
+      }
+    });
+    boxChat.markModified('members');
+    boxChat.save();
   }
 }
 
-module.exports = new ChatController();
+module.exports = new ChatHandler();

@@ -17,8 +17,6 @@ const validateDto = (schema) => {
       }
 
       const dto = matchedData(req, { includeOptionals: true });
-
-      console.log(dto);
       req.dto = dto;
 
       next();
