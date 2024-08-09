@@ -89,12 +89,6 @@ class ChatHandler {
           return member;
         }),
       );
-      // console.log(box_chat.members);
-      box_chat.members[0].then((update_members) => {
-        // console.log(update_members);
-        box_chat.members = update_members;
-        box_chat.save();
-      });
     }
     const result = await chatService.getDetailChatByUserId(dto._id, user.id);
     result.members.forEach((member) => {
@@ -287,11 +281,11 @@ class ChatHandler {
           }
         }),
       );
-      data.members[0].then((update_members) => {
-        data.members = update_members;
-        data.last_interact = null;
-        data.save();
-      });
+      // data.members[0].then((update_members) => {
+      //   data.members = update_members;
+      //   data.last_interact = null;
+      //   data.save();
+      // });
     });
 
     var account = await findOneBySlug(message.slug_sender);
@@ -514,9 +508,9 @@ class ChatHandler {
     const dataChat = await BoxChat.findOne({ _id: boxChatId });
     return await Promise.all(
       dataChat.members.map(async (member) => {
-        var tmp_member = await findOneBySlug(member.slug_member);
-        member.detail = tmp_member;
-        return member;
+        const data = member.toObject()
+        data.detail = await member.getDetail()
+        return data 
       }),
     );
   }
@@ -543,6 +537,40 @@ class ChatHandler {
     });
     boxChat.markModified('members');
     boxChat.save();
+  }
+
+  async createBoxChat(user, dto) {
+    const dataAccount = user;
+
+    const box_chat = await BoxChat.findOne({ _id: dto._id });
+    box_chat.members = await Promise.all(
+      dto.members.map(async(slug) => {
+        const member = await findOneBySlug(slug)
+  
+        return {
+          slug_member: slug,
+          nick_name: `${member.fname} ${member.lname}`
+        }
+      })
+    )
+    box_chat.save();
+
+    const result = await chatService.getDetailChatByUserId(dto._id, user.id);
+    result.members.forEach((member) => {
+      if (
+        member.slug_member == dataAccount.slug_personal &&
+        member.startContent > 0
+      ) {
+        result.content_messages = result.content_messages.filter(
+          (content_message, idx) => idx > member.startContent,
+        );
+      }
+    });
+
+    return {
+      result,
+      shortChat: await this.getShortChat(result, user.id),
+    };
   }
 }
 

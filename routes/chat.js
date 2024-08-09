@@ -10,6 +10,7 @@ const RemoveSessionMessageDto = require('../app/DTO/User/Chat/RemoveSessionMessa
 const UpdateInteractMessageDto = require('../app/DTO/User/Chat/UpdateInteractMessageDTO');
 const ClearNotificationBoxChatDto = require('../app/DTO/User/Chat/ClearNotificationBoxChatDTO');
 const UpdateMemberNicknameDto = require('../app/DTO/User/Chat/UpdateMemberNicknameDTO');
+const CreateChatDto = require('../app/DTO/User/Chat/CreateBoxChatDTO');
 const router = express.Router();
 router.get('/get-list-box-chat', chatController.getListBoxChat);
 router.get('/search', validateDto(SearchBoxChatDto), chatController.search);
@@ -17,6 +18,11 @@ router.get(
   '/get-detail-chat',
   validateDto(GetDetailChatDto),
   chatController.getDetailChat,
+);
+router.post(
+  '/create-box-chat',
+  validateDto(CreateChatDto),
+  chatController.createBoxChat,
 );
 router.post(
   '/:boxChatId/upload-media-message',

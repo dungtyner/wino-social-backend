@@ -4,6 +4,11 @@ class chatController {
     res.success(await chatHandler.getListBoxChat(req.user));
   }
 
+  async createBoxChat(req, res) {
+    const data = await chatHandler.createBoxChat(req.user, req.dto);
+    res.success(data);
+  }
+
   async getDetailChat(req, res) {
     const data = await chatHandler.getDetailChat(req.user, req.dto);
     res.success(data);
