@@ -7,6 +7,7 @@ const {
 } = require('../../repositories/AccountRepository');
 const chatService = require('../../services/ChatService');
 const mongoose = require('mongoose');
+const socketClient = require('../../clients/socketClient');
 
 class ChatHandler {
   async getListBoxChat(user) {
@@ -266,9 +267,8 @@ class ChatHandler {
     BoxChat.findOne({ _id: idChat }).then(async (data) => {
       message.id_content_message = new mongoose.Types.ObjectId();
       data.content_messages = data.content_messages.concat(message);
-      data.members = Promise.all(
+      data.members = await Promise.all(
         await data.members.map(async (member) => {
-          // console.log(member.slug_member,message.slug_sender);
           if (member.slug_member != message.slug_sender) {
             member.notification = true;
             return member;
@@ -281,24 +281,16 @@ class ChatHandler {
           }
         }),
       );
-      // data.members[0].then((update_members) => {
-      //   data.members = update_members;
-      //   data.last_interact = null;
-      //   data.save();
-      // });
+
+      data.save();
     });
 
-    var account = await findOneBySlug(message.slug_sender);
-    var nsp_chat = global.io.of('/chat');
-    await nsp_chat.to(`CHAT_${idChat}`).emit(`PEOPLE_${idChat}_SENDING`, {
+    const account = await findOneBySlug(message.slug_sender);
+
+    socketClient.post('/event/chat/add-message', {
       account,
+      idChat,
       message,
-    });
-    await nsp_chat.to(`CHAT_${idChat}`).emit(`PEOPLE_SENDING`, {
-      id_Chat: idChat,
-      slug_sender: account.slug_personal,
-      time_send:
-        message.session_messages[message.session_messages.length - 1].time_send,
     });
   }
 
@@ -508,9 +500,9 @@ class ChatHandler {
     const dataChat = await BoxChat.findOne({ _id: boxChatId });
     return await Promise.all(
       dataChat.members.map(async (member) => {
-        const data = member.toObject()
-        data.detail = await member.getDetail()
-        return data 
+        const data = member.toObject();
+        data.detail = await member.getDetail();
+        return data;
       }),
     );
   }
@@ -544,15 +536,15 @@ class ChatHandler {
 
     const box_chat = await BoxChat.findOne({ _id: dto._id });
     box_chat.members = await Promise.all(
-      dto.members.map(async(slug) => {
-        const member = await findOneBySlug(slug)
-  
+      dto.members.map(async (slug) => {
+        const member = await findOneBySlug(slug);
+
         return {
           slug_member: slug,
-          nick_name: `${member.fname} ${member.lname}`
-        }
-      })
-    )
+          nick_name: `${member.fname} ${member.lname}`,
+        };
+      }),
+    );
     box_chat.save();
 
     const result = await chatService.getDetailChatByUserId(dto._id, user.id);

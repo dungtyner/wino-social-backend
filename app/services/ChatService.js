@@ -23,38 +23,6 @@ class ChatService {
 
     return data;
   }
-
-  async load_roomSocket_Chat(account) {
-    global.io.on('connect', () => {});
-    var nsp_chat = global.io.of('/chat');
-
-    await nsp_chat.on('connect', async (socket) => {
-      // sockets.forEach( async socket=>{
-      // console.log(`ACCOUNT ${account.slug_personal} CONNECT`);
-
-      await account.list_id_box_chat.forEach(async (el) => {
-        socket.join(`CHAT_${el}`);
-        await socket.on(`IN_${el}_NO_TYPING`, (accountTyping) => {
-          // console.log(`ACCOUNT ${accountTyping.slug_personal} NO TYPING`);
-          socket.broadcast
-            .to(`CHAT_${el}`)
-            .emit(`IN_${el}_NO_TYPING`, accountTyping);
-        });
-        await socket.on(`IN_${el}_PEOPLE_TYPING`, (account) => {
-          socket.broadcast
-            .to(`CHAT_${el}`)
-            .emit(`PEOPLE_${el}_TYPING`, account);
-        });
-      });
-      // })
-      socket.on('disconnect', () => {
-        socket.removeAllListeners();
-      });
-    });
-
-    await global.io.of('/chat').fetchSockets();
-    console.log(global.io.of('/chat').adapter.rooms);
-  }
 }
 
 module.exports = new ChatService();
