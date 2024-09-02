@@ -1,4 +1,4 @@
-const { findOneBySlug } = require('../../repositories/AccountRepository');
+const { findOneBySlug } = require('@/repositories/AccountRepository');
 class FriendHandler {
   async getListFriend(user) {
     const dataAccount = user;

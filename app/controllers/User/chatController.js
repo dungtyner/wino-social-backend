@@ -1,4 +1,4 @@
-const chatHandler = require('../../handlers/User/ChatHandler');
+const chatHandler = require('@/handlers/User/ChatHandler');
 class chatController {
   async getListBoxChat(req, res) {
     res.success(await chatHandler.getListBoxChat(req.user));

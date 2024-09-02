@@ -1,5 +1,5 @@
-const { findOneBySlug } = require('../repositories/AccountRepository');
-const { BoxChat } = require('../models/BoxChat');
+const { findOneBySlug } = require('@/repositories/AccountRepository');
+const { BoxChat } = require('@/models/BoxChat');
 
 class ChatService {
   async getDetailChatByUserId(_id) {

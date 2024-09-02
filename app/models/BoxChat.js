@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const {
   findOneById,
   findOneBySlug,
-} = require('../repositories/AccountRepository');
+} = require('@/repositories/AccountRepository');
 
 /**
  * @typedef {Object} ChatMemberSchema

@@ -1,13 +1,13 @@
-const driveStorageService = require('../../services/DriveStorageService');
-const Account = require('../../models/Account');
-const { BoxChat, Chat } = require('../../models/BoxChat');
+const driveStorageService = require('@/services/DriveStorageService');
+const Account = require('@/models/Account');
+const { BoxChat, Chat } = require('@/models/BoxChat');
 const {
   findOneById,
   findOneBySlug,
-} = require('../../repositories/AccountRepository');
-const chatService = require('../../services/ChatService');
+} = require('@/repositories/AccountRepository');
+const chatService = require('@/services/ChatService');
 const mongoose = require('mongoose');
-const socketClient = require('../../clients/socketClient');
+const socketClient = require('@/clients/socketClient');
 
 class ChatHandler {
   async getListBoxChat(user) {

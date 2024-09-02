@@ -1,5 +1,5 @@
-const UnauthorizedException = require('../exceptions/UnauthorizedException');
-const { findOneById } = require('../repositories/AccountRepository');
+const UnauthorizedException = require('@/exceptions/UnauthorizedException');
+const { findOneById } = require('@/repositories/AccountRepository');
 
 async function isAuthenticated(req, res, next) {
   try {
