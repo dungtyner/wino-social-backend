@@ -1,8 +1,8 @@
 const express = require('express');
-const isAuthenticated = require('../app/middlewares/auth');
+const isAuthenticated = require('@/middlewares/auth');
 const router = express.Router();
 const notificationController =
-  require('../app/controllers/User/notificationController').NotificationController;
+  require('@/controllers/User/notificationController').NotificationController;
 router.get(
   '/get-notification',
   isAuthenticated,

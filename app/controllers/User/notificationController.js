@@ -1,4 +1,4 @@
-const notificationHandler = require('../../handlers/User/NotificationHandler');
+const notificationHandler = require('@/handlers/User/NotificationHandler');
 
 class NotificationController {
   async getNotification(req, res) {

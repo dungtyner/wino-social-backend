@@ -1,6 +1,6 @@
-const InternalServerException = require('../../exceptions/InternalServerException');
-const UnauthorizedException = require('../../exceptions/UnauthorizedException');
-const Account = require('../../models/Account');
+const InternalServerException = require('@/exceptions/InternalServerException');
+const UnauthorizedException = require('@/exceptions/UnauthorizedException');
+const Account = require('@/models/Account');
 var nodemailer = require('nodemailer');
 require('dotenv').config();
 global.listSocketOnline = [];

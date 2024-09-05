@@ -1,5 +1,8 @@
 const mongoose = require('mongoose');
-const { findOneById, findOneBySlug } = require('../repositories/AccountRepository');
+const {
+  findOneById,
+  findOneBySlug,
+} = require('@/repositories/AccountRepository');
 
 /**
  * @typedef {Object} ChatMemberSchema
@@ -7,14 +10,12 @@ const { findOneById, findOneBySlug } = require('../repositories/AccountRepositor
  * @property {string} nick_name
  */
 
-const ChatMemberSchema = mongoose.Schema(
-  {
-    slug_member: {  type: String, required: true },
-    nick_name: {  type: String, required: true },
-  }
-);
+const ChatMemberSchema = mongoose.Schema({
+  slug_member: { type: String, required: true },
+  nick_name: { type: String, required: true },
+});
 
-ChatMemberSchema.methods.getDetail = async function() {
+ChatMemberSchema.methods.getDetail = async function () {
   return await findOneBySlug(this.slug_member);
 };
 
@@ -25,7 +26,7 @@ ChatMemberSchema.methods.getDetail = async function() {
 const BoxChat = mongoose.Schema(
   {
     content_messages: { type: Array },
-    members: [ ChatMemberSchema ],
+    members: [ChatMemberSchema],
     name_chat: { type: String },
     avatar_chat: { type: String },
     last_interact: { type: Object },

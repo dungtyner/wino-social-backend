@@ -1,8 +1,8 @@
-const friendHandler = require('../../handlers/User/FriendHandler');
+const friendHandler = require('@/handlers/User/FriendHandler');
 const {
   findOneById,
   findOneBySlug,
-} = require('../../repositories/AccountRepository');
+} = require('@/repositories/AccountRepository');
 const AccountController = require('./AccountController');
 
 class FriendController {

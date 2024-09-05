@@ -1,6 +1,6 @@
-const UnauthorizedException = require('../../exceptions/UnauthorizedException');
+const UnauthorizedException = require('@/exceptions/UnauthorizedException');
 const BaseController = require('./baseController');
-const authHandler = require('../../handlers/User/AuthHandler');
+const authHandler = require('@/handlers/User/AuthHandler');
 require('dotenv').config();
 global.listSocketOnline = [];
 

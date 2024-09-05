@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const Account = require('../models/Account');
+const Account = require('@/models/Account');
 
 async function findOneById(_id) {
   var data = await mongoose.model('Account', Account.schema).findOne({ _id });
