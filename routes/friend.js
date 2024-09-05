@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const friendController = require('@/controllers/User/friendController');
-const accountController = require('@/controllers/User/AccountController');
-const validateDto = require('@/middlewares/validateDTO');
+const accountController = require('@/controllers/User/accountController');
+const validateDto = require('@/middlewares/validateDto');
 const AddFriendDto = require('@/DTO/User/Friend/AddFriendDTO');
 const CancelRequestAddFriendDto = require('@/DTO/User/Friend/CancelRequestAddFriendDTO');
 
