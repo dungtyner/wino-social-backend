@@ -3,6 +3,8 @@ const app = express();
 const http = require('http');
 const server = http.createServer(app);
 require('dotenv').config();
+require('module-alias/register');
+
 const connectDB = require('./config/db/');
 const configureCors = require('./config/cors');
 const configureExpress = require('./config/express');

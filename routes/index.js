@@ -1,4 +1,4 @@
-const isAuthenticated = require('../app/middlewares/auth');
+const isAuthenticated = require('@/middlewares/auth');
 const accountRoute = require('./account');
 const chatRoute = require('./chat');
 const notificationRoute = require('./notification');

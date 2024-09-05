@@ -1,17 +1,17 @@
-const { getCountNotificationChat } = require('../../models/BoxChat');
-const Account = require('../../models/Account');
-const BoxChat = require('../../models/BoxChat');
-const { findOneBySlug } = require('../../repositories/AccountRepository');
-const friendOnlineService = require('../../services/FriendOnlineService');
-const chatService = require('../../services/ChatService');
+const { getCountNotificationChat } = require('@/models/BoxChat');
+const Account = require('@/models/Account');
+const BoxChat = require('@/models/BoxChat');
+const { findOneBySlug } = require('@/repositories/AccountRepository');
+const friendOnlineService = require('@/services/FriendOnlineService');
+const chatService = require('@/services/ChatService');
+const socketClient = require('../../clients/socketClient');
 require('dotenv').config();
 global.listSocketOnline = [];
 
 class AccountHandler {
   async checkIsActivated(user) {
     const account = user;
-
-    chatService.load_roomSocket_Chat(account);
+    socketClient.post('/listener/chatting', account);
     account.count_notification_chat = await getCountNotificationChat({
       id_account: account._id,
     });

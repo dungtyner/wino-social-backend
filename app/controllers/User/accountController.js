@@ -1,5 +1,5 @@
 const BaseController = require('./baseController');
-const accountHandler = require('../../handlers/User/AccountHandler');
+const accountHandler = require('@/handlers/User/AccountHandler');
 require('dotenv').config();
 global.listSocketOnline = [];
 

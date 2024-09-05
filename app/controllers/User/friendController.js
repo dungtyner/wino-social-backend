@@ -1,9 +1,9 @@
-const friendHandler = require('../../handlers/User/FriendHandler');
+const friendHandler = require('@/handlers/User/FriendHandler');
 const {
   findOneById,
   findOneBySlug,
-} = require('../../repositories/AccountRepository');
-const AccountController = require('./AccountController');
+} = require('@/repositories/AccountRepository');
+const AccountController = require('./accountController');
 
 class FriendController {
   async req_getListRequestFriend(req, res) {

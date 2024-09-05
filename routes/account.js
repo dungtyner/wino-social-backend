@@ -1,8 +1,8 @@
 const express = require('express');
-const accountControllers = require('../app/controllers/User/AccountController');
-const asyncHandler = require('../app/utils/asyncHandler');
-const validateDto = require('../app/middlewares/validateDTO');
-const SearchAccountDto = require('../app/DTO/User/Account/SearchAccountDTO');
+const accountControllers = require('@/controllers/User/accountController');
+const asyncHandler = require('@/utils/asyncHandler');
+const validateDto = require('@/middlewares/validateDto');
+const SearchAccountDto = require('@/DTO/User/Account/SearchAccountDTO');
 const router = express.Router();
 
 router.get(
