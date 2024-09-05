@@ -3,7 +3,7 @@ const {
   findOneById,
   findOneBySlug,
 } = require('@/repositories/AccountRepository');
-const AccountController = require('./AccountController');
+const AccountController = require('./accountController');
 
 class FriendController {
   async req_getListRequestFriend(req, res) {
