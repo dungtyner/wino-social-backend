@@ -11,7 +11,6 @@ function configureExpress(app) {
   );
   app.use(express.json());
   app.use(body_pa.urlencoded({ extended: true }));
-  app.set('trust proxy', 1);
 }
 global.uploads = uploads;
 

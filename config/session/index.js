@@ -9,7 +9,7 @@ var store = new MongoDBStore({
 
 function configureSession(app) {
   app.set('trust proxy', 1);
-  
+
   app.use(
     session({
       secret: process.env.ACCESS_TOKEN_CODE,
